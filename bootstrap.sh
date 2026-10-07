@@ -8,7 +8,12 @@ DIR=/opt/archinst
 
 [[ $EUID -eq 0 ]] || { echo "Run as root" >&2; exit 1; }
 
-command -v git >/dev/null || pacman -Sy --needed --noconfirm git
+# No 'pacman -Sy git' (partial upgrade): keyring first, then a full upgrade.
+# kernel-modules-hook keeps the running kernel's modules if the kernel is upgraded.
+if ! command -v git >/dev/null; then
+	pacman -Sy --needed --noconfirm archlinux-keyring kernel-modules-hook
+	pacman -Su --needed --noconfirm git
+fi
 
 if [[ -d $DIR/.git ]]; then
 	git -C "$DIR" pull --ff-only
