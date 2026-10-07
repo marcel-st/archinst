@@ -40,7 +40,7 @@ the secrets repo is fetched, so they only take effect from this repository or
 
 | Variable | Default | Meaning |
 |----------|---------|---------|
-| `HOST_NAME` | empty | hostname; empty means ask (current hostname as default) |
+| `HOST_NAME` | empty | hostname; empty means ask (current hostname as default). Can also be set in the environment: `HOST_NAME=web1 archinst base` |
 | `TIMEZONE` | `Europe/Amsterdam` | path below `/usr/share/zoneinfo` (install only) |
 | `LOCALE` | `en_US.UTF-8` | system locale (install only) |
 | `KEYMAP` | `us` | console keymap (install only) |
