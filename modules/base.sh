@@ -18,10 +18,22 @@ set_root_password() {
 	echo "root:$ROOT_PASSWORD_HASH" | chpasswd -e
 }
 
+# A kernel upgraded without reboot leaves the running kernel without modules,
+# so iptables (nf_tables) and other modules cannot load until a reboot
+check_kernel() {
+	systemd_live || return 0
+	[[ -d /usr/lib/modules/$(uname -r) ]] && return 0
+	die "running kernel $(uname -r) has no modules (kernel upgraded without reboot); reboot and run 'archinst base' again"
+}
+
 setup_pacman() {
 	log "Configuring pacman and mirrors"
 	sed -i 's/^#\(Color\|ParallelDownloads\)/\1/' /etc/pacman.conf
-	pacman -Sy --needed --noconfirm reflector archlinux-keyring
+	# Only the keyring and kernel-modules-hook before the upgrade (no partial
+	# upgrades); the hook keeps the running kernel's modules when -Su upgrades it
+	pacman -Sy --needed --noconfirm archlinux-keyring kernel-modules-hook
+	pacman -Su --noconfirm
+	pkg reflector
 	cat >/etc/xdg/reflector/reflector.conf <<-EOF
 	--save /etc/pacman.d/mirrorlist
 	--country $MIRROR_COUNTRIES
@@ -29,8 +41,11 @@ setup_pacman() {
 	--latest 20
 	--sort rate
 	EOF
-	reflector @/etc/xdg/reflector/reflector.conf || warn "reflector failed, keeping current mirrorlist"
-	pacman -Syu --noconfirm
+	if reflector @/etc/xdg/reflector/reflector.conf; then
+		pacman -Syu --noconfirm
+	else
+		warn "reflector failed, keeping current mirrorlist"
+	fi
 	pkg "${BASE_PACKAGES[@]}"
 	if systemd-detect-virt -q --vm; then pkg qemu-guest-agent; fi
 }
@@ -164,9 +179,11 @@ setup_misc() {
 	: >/etc/motd
 	echo '[[ $- == *i* ]] && fastfetch' >/etc/profile.d/fastfetch.sh
 	[[ -e /usr/bin/vi ]] || ln -s /usr/bin/nvim /usr/bin/vi
-	enable_units cronie.service systemd-timesyncd.service fstrim.timer reflector.timer
+	enable_units cronie.service systemd-timesyncd.service fstrim.timer reflector.timer \
+		linux-modules-cleanup.service
 }
 
+check_kernel
 set_hostname
 set_root_password
 setup_pacman

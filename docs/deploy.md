@@ -64,11 +64,18 @@ The baseline every host gets. In order:
 2. **Root password**: when `ROOT_PASSWORD_HASH` is set (best in the secrets
    repo's `archinst.conf`), root gets that password, replacing for example
    the temporary password a VPS provider hands out. Empty = left as is.
-3. **pacman**: enables `Color` and `ParallelDownloads`, writes
-   `/etc/xdg/reflector/reflector.conf` (HTTPS mirrors in `MIRROR_COUNTRIES`,
-   sorted by speed), refreshes the mirrorlist and enables the weekly
-   `reflector.timer`. Then a full system upgrade and `BASE_PACKAGES`.
+3. **pacman**: enables `Color` and `ParallelDownloads`, updates
+   `archlinux-keyring` and installs `kernel-modules-hook`, then does a full
+   system upgrade. Writes `/etc/xdg/reflector/reflector.conf` (HTTPS mirrors
+   in `MIRROR_COUNTRIES`, sorted by speed), refreshes the mirrorlist and
+   enables the weekly `reflector.timer`. Then `BASE_PACKAGES`.
    Virtual machines also get `qemu-guest-agent`.
+
+   `kernel-modules-hook` keeps the running kernel's modules when the kernel
+   is upgraded, so the firewall and other modules keep working until the
+   next reboot. When the running kernel has no modules at all (some VPS
+   images upgrade the kernel without rebooting), `base` stops right away and
+   asks you to reboot first.
 4. **Admin user** (`ADMIN_USER`, group `ADMIN_GROUP`): created when missing,
    without a usable password. The group gets passwordless sudo through
    `/etc/sudoers.d/10-archinst`. `~/.ssh/authorized_keys` is **replaced** by
