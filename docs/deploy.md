@@ -117,10 +117,11 @@ To use a completely custom ruleset instead, put `iptables/iptables.rules`
 and/or `iptables/ip6tables.rules` in the secrets repo. Rules are always
 checked with `iptables-restore --test` before they are installed.
 
-**Lockout protection:** when `base` runs over SSH, the IPv4 rules are applied
-with `iptables-apply`. Open a *second* SSH session to check you can still get
-in, then answer `y`. Without an answer within 30 seconds the old rules are
-restored and archinst stops.
+**Lockout protection:** when `base` runs in a terminal, the IPv4 rules are
+applied with `iptables-apply`. Over SSH, open a *second* SSH session to check
+you can still get in, then answer `y`; on a console just answer `y`. Without
+an answer within 30 seconds the old rules are restored and archinst stops.
+Without a terminal (`ASSUME_YES`, automation) the rules are applied directly.
 
 Restarting the firewall flushes Docker's iptables chains, so Docker is
 restarted afterwards when it is running. If you reload the firewall by hand,

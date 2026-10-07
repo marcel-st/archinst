@@ -154,7 +154,9 @@ setup_firewall() {
 
 	systemctl enable iptables ip6tables
 	systemd_live || return 0
-	if [[ -n ${SSH_CONNECTION:-} ]] && interactive; then
+	# Not only when SSH_CONNECTION is set: sudo drops it, so 'sudo archinst base'
+	# over SSH would skip the rollback
+	if interactive; then
 		# Rolls back automatically unless you confirm SSH still works
 		iptables-apply -t 30 /etc/iptables/iptables.rules || die "firewall rolled back; fix rules and re-run"
 		systemctl start iptables ip6tables
