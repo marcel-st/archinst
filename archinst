@@ -38,8 +38,9 @@ run_module() {
 	[[ -f $file ]] || die "unknown module '$1' (see 'archinst list')"
 	[[ $1 == base ]] || require_base
 	log "Applying module: $1"
-	# Subshell keeps module variables and functions out of the next module
-	( source "$file" ) || exit 1
+	# Subshell keeps module variables and functions out of the next module.
+	# No '|| exit' here: that would disable set -e inside the module.
+	( source "$file" )
 	install -d "$STATE_DIR"
 	date '+%F %T' >"$STATE_DIR/$1"
 	log "Module $1 done"
