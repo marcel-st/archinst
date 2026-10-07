@@ -154,7 +154,11 @@ setup_firewall() {
 setup_misc() {
 	log "System tweaks"
 	install -d /etc/makepkg.conf.d
-	echo 'MAKEFLAGS="-j$(nproc)"' >/etc/makepkg.conf.d/10-archinst.conf
+	# No -debug packages: makepkg -i would install them next to the real one
+	cat >/etc/makepkg.conf.d/10-archinst.conf <<-'EOF'
+	MAKEFLAGS="-j$(nproc)"
+	OPTIONS+=(!debug)
+	EOF
 	# Keep /tmp on disk: large AUR builds do not fit in a RAM-backed /tmp
 	systemctl mask tmp.mount
 	: >/etc/motd
