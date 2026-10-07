@@ -23,6 +23,7 @@ which is fetched with a short login code instead of a typed token
 Boot the Arch ISO, make sure there is network, then type:
 
 ```bash
+pacman -Sy --noconfirm git
 git clone https://github.com/marcel-st/archinst
 archinst/archinst install
 ```

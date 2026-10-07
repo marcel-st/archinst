@@ -16,11 +16,14 @@ system that is already installed (such as a VPS) start at
 ## Running the installer
 
 ```bash
+pacman -Sy --noconfirm git
 git clone https://github.com/marcel-st/archinst
 archinst/archinst install
 ```
 
-These two short lines are deliberately all you need to type on a console that
+The ISO does not include git, hence the first line; `-Sy` is fine on the
+live system because it is thrown away after the install. These three short
+lines are deliberately all you need to type on a console that
 cannot paste (Proxmox noVNC, an iDRAC/IPMI web console, a physical keyboard).
 If you can reach the live system over SSH instead, you can also use the
 bootstrap one-liner from the README.

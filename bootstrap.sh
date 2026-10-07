@@ -8,11 +8,16 @@ DIR=/opt/archinst
 
 [[ $EUID -eq 0 ]] || { echo "Run as root" >&2; exit 1; }
 
-# No 'pacman -Sy git' (partial upgrade): keyring first, then a full upgrade.
-# kernel-modules-hook keeps the running kernel's modules if the kernel is upgraded.
 if ! command -v git >/dev/null; then
-	pacman -Sy --needed --noconfirm archlinux-keyring kernel-modules-hook
-	pacman -Su --needed --noconfirm git
+	if [[ -d /run/archiso ]]; then
+		# Live ISO runs from RAM and is thrown away: no full upgrade there
+		pacman -Sy --needed --noconfirm git
+	else
+		# No 'pacman -Sy git' (partial upgrade): keyring first, then a full
+		# upgrade. kernel-modules-hook keeps the running kernel's modules.
+		pacman -Sy --needed --noconfirm archlinux-keyring kernel-modules-hook
+		pacman -Su --needed --noconfirm git
+	fi
 fi
 
 if [[ -d $DIR/.git ]]; then
