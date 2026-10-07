@@ -63,10 +63,13 @@ partition_disk() {
 	local root
 	root=$(part "$INSTALL_DISK" 2)
 	if [[ $ROOT_FS == xfs ]]; then mkfs.xfs -f "$root"; else mkfs.ext4 -F "$root"; fi
-	mount "$root" "$MNT"
+	if [[ $BOOT_MODE == uefi ]]; then mkfs.fat -F 32 "$(part "$INSTALL_DISK" 1)"; fi
+	# Explicit types: right after mkfs, mount's own detection can miss the new
+	# filesystem and fall back to guessing (seen on Proxmox)
+	udevadm settle
+	mount -t "$ROOT_FS" "$root" "$MNT"
 	if [[ $BOOT_MODE == uefi ]]; then
-		mkfs.fat -F 32 "$(part "$INSTALL_DISK" 1)"
-		mount --mkdir "$(part "$INSTALL_DISK" 1)" "$MNT/boot"
+		mount --mkdir -t vfat "$(part "$INSTALL_DISK" 1)" "$MNT/boot"
 	fi
 }
 
