@@ -47,6 +47,8 @@ Wants=network-online.target
 
 [Service]
 Type=oneshot
+# systemd sets no HOME for system services; kopia keeps its config in ~/.config
+Environment=HOME=/root
 ExecStart=/usr/bin/kopia snapshot create ${BACKUP_PATHS[*]}
 UNIT
 cat >/etc/systemd/system/kopia-backup.timer <<UNIT
