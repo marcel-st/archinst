@@ -9,6 +9,15 @@ set_hostname() {
 	return 0
 }
 
+# Replaces e.g. a provider's temporary root password; empty = leave as is
+set_root_password() {
+	[[ -n $ROOT_PASSWORD_HASH ]] || return 0
+	[[ $ROOT_PASSWORD_HASH == \$* ]] || die "ROOT_PASSWORD_HASH is not a crypt hash; generate with: openssl passwd -6"
+	[[ $(getent shadow root | cut -d: -f2) == "$ROOT_PASSWORD_HASH" ]] && return 0
+	log "Setting root password from ROOT_PASSWORD_HASH"
+	echo "root:$ROOT_PASSWORD_HASH" | chpasswd -e
+}
+
 setup_pacman() {
 	log "Configuring pacman and mirrors"
 	sed -i 's/^#\(Color\|ParallelDownloads\)/\1/' /etc/pacman.conf
@@ -155,6 +164,7 @@ setup_misc() {
 }
 
 set_hostname
+set_root_password
 setup_pacman
 setup_admin
 setup_sshd

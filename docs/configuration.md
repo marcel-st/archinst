@@ -74,7 +74,7 @@ These are ignored for a protocol when the secrets repo contains
 |----------|---------|---------|
 | `INSTALL_DISK` | empty | target disk, e.g. `/dev/vda`; empty = auto-detect, ask when there are several |
 | `ROOT_FS` | `xfs` | `xfs` or `ext4` |
-| `ROOT_PASSWORD_HASH` | empty | SHA-512 hash from `openssl passwd -6`; empty = ask |
+| `ROOT_PASSWORD_HASH` | empty | SHA-512 hash from `openssl passwd -6`. Installer: empty = ask. `base`: sets it as root password on every host (replaces a VPS provider's temporary password); empty = leave as is |
 | `INSTALL_MODULES` | `()` | modules applied after `base`, e.g. `(docker sshguard)` |
 | `ASSUME_YES` | `no` | `yes` answers every yes/no question with yes, including the disk wipe |
 

@@ -61,22 +61,25 @@ The baseline every host gets. In order:
 
 1. **Hostname**: set from `HOST_NAME`, or asked with the current hostname as
    default.
-2. **pacman**: enables `Color` and `ParallelDownloads`, writes
+2. **Root password**: when `ROOT_PASSWORD_HASH` is set (best in the secrets
+   repo's `archinst.conf`), root gets that password, replacing for example
+   the temporary password a VPS provider hands out. Empty = left as is.
+3. **pacman**: enables `Color` and `ParallelDownloads`, writes
    `/etc/xdg/reflector/reflector.conf` (HTTPS mirrors in `MIRROR_COUNTRIES`,
    sorted by speed), refreshes the mirrorlist and enables the weekly
    `reflector.timer`. Then a full system upgrade and `BASE_PACKAGES`.
    Virtual machines also get `qemu-guest-agent`.
-3. **Admin user** (`ADMIN_USER`, group `ADMIN_GROUP`): created when missing,
+4. **Admin user** (`ADMIN_USER`, group `ADMIN_GROUP`): created when missing,
    without a usable password. The group gets passwordless sudo through
    `/etc/sudoers.d/10-archinst`. `~/.ssh/authorized_keys` is **replaced** by
    all keys from `secrets/users/*.pub` plus `ADMIN_SSH_KEYS`; keys added by
    hand are removed on the next run, so add them to the secrets repo instead.
-4. **sshd**: `/etc/ssh/sshd_config.d/10-archinst.conf` disables root login,
+5. **sshd**: `/etc/ssh/sshd_config.d/10-archinst.conf` disables root login,
    password and keyboard-interactive login. This step is **skipped with a
    warning when the admin user has no SSH key**, so you cannot lock yourself
    out. The config is validated with `sshd -t` before sshd is reloaded.
-5. **Firewall**: see below.
-6. **Tweaks**:
+6. **Firewall**: see below.
+7. **Tweaks**:
    - `MAKEFLAGS="-j$(nproc)"` in `/etc/makepkg.conf.d/10-archinst.conf`
    - `tmp.mount` masked, so `/tmp` is on disk; large AUR builds do not fit in RAM
    - empty `/etc/motd` and `fastfetch` on interactive login
