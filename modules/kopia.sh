@@ -10,10 +10,23 @@ aur kopia-bin
 # Repository encryption password; asked once, kopia remembers it after connecting
 if [[ -n ${KOPIA_PASSWORD:-} ]]; then export KOPIA_PASSWORD; fi
 
+# Kopia does not create the WebDAV directory itself; 201 = created, 405 = exists
+webdav_mkdir() {
+	local pass=${BACKUP_PASS//\\/\\\\} code
+	pass=${pass//\"/\\\"}
+	# Credentials via stdin config, not on the command line
+	code=$(curl -sS -o /dev/null -w '%{http_code}' -X MKCOL -K - "$1/" <<<"user = \"$BACKUP_USER:$pass\"") || true
+	[[ $code == 201 || $code == 405 ]] || die "cannot create WebDAV directory $1 (HTTP $code)"
+}
+
+repo_url="$BACKUP_STORAGE/$(cat /etc/hostname)"
+
 if kopia repository status &>/dev/null; then
 	log "Kopia repository already connected"
 else
-	repo_args=(webdav --url "$BACKUP_STORAGE/$(cat /etc/hostname)"
+	webdav_mkdir "$BACKUP_STORAGE"
+	webdav_mkdir "$repo_url"
+	repo_args=(webdav --url "$repo_url"
 		--webdav-username "$BACKUP_USER" --webdav-password "$BACKUP_PASS")
 	log "Connecting to kopia repository (creating it when it does not exist)"
 	kopia repository connect "${repo_args[@]}" || kopia repository create "${repo_args[@]}"
