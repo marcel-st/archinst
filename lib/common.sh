@@ -55,7 +55,13 @@ enable_units() {
 	fi
 }
 
-pkg() { pacman -S --needed --noconfirm "$@"; }
+# Installs missing packages with a full upgrade: a plain -S uses the cached
+# sync database, which points at files mirrors drop within days, and -Sy
+# alone would be a partial upgrade. No-op when everything is installed.
+pkg() {
+	pacman -T "$@" >/dev/null && return 0
+	pacman -Syu --needed --noconfirm "$@"
+}
 
 # Path of a file in the secrets repo, fails when it does not exist
 secret() {
