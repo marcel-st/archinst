@@ -61,7 +61,7 @@ the secrets repo is fetched, so they only take effect from this repository or
 |----------|---------|---------|
 | `FIREWALL` | `yes` | `no` leaves the firewall alone |
 | `SSH_ALLOW_V4` | `()` | IPv4 addresses/networks allowed to SSH; empty = anywhere |
-| `SSH_ALLOW_V6` | `()` | same for IPv6 |
+| `SSH_ALLOW_V6` | `()` | same for IPv6; set it too when `SSH_ALLOW_V4` is set, or SSH stays open over IPv6 |
 | `OPEN_TCP_PORTS` | `()` | TCP ports open to everyone, e.g. `(80 443)` |
 | `OPEN_UDP_PORTS` | `()` | UDP ports open to everyone |
 

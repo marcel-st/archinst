@@ -131,7 +131,7 @@ install_main() {
 	[[ $ROOT_FS == xfs || $ROOT_FS == ext4 ]] || die "ROOT_FS must be xfs or ext4"
 	[[ -d /sys/firmware/efi ]] && BOOT_MODE=uefi || BOOT_MODE=bios
 
-	if [[ -n $SECRETS_REPO && ! -d $SECRETS_DIR/.git ]] && confirm "Fetch secrets from $SECRETS_REPO?"; then
+	if [[ -n $SECRETS_REPO && ! -d $SECRETS_DIR/.git ]] && can_fetch_secrets && confirm "Fetch secrets from $SECRETS_REPO?"; then
 		fetch_secrets
 	fi
 

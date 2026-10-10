@@ -118,7 +118,9 @@ The file is copied to the new system with mode 600, so host-specific settings
 such as `OPEN_TCP_PORTS` stay in effect for later runs of `archinst`.
 
 Fetching the secrets still needs the device login (or `GITHUB_TOKEN` exported
-in the shell).
+in the shell). Without a terminal and without a token the installer skips the
+secrets with a warning; run `archinst secrets` first in that case, as the
+existing secrets directory is then simply copied into the new system.
 
 ## Proxmox tips
 

@@ -39,7 +39,7 @@ setup_pacman() {
 	--country $MIRROR_COUNTRIES
 	--protocol https
 	--latest 20
-	--sort rate
+	--sort score
 	EOF
 	if reflector @/etc/xdg/reflector/reflector.conf; then
 		pacman -Syu --noconfirm
@@ -136,9 +136,20 @@ generate_rules() {
 	echo "COMMIT"
 }
 
+# SSH restricted for one protocol only is still open to everyone over the other;
+# $1/$2 = restricted/unrestricted IP version, $3 = custom rules file for $2
+warn_ssh_open() {
+	local -n restricted=SSH_ALLOW_V$1 open=SSH_ALLOW_V$2
+	((${#restricted[@]} && ! ${#open[@]})) || return 0
+	secret "iptables/$3.rules" >/dev/null && return 0
+	warn "SSH_ALLOW_V$1 is set but SSH_ALLOW_V$2 is empty: SSH is open to everyone over IPv$2"
+}
+
 setup_firewall() {
 	[[ $FIREWALL == yes ]] || { log "Firewall disabled (FIREWALL=$FIREWALL)"; return 0; }
 	log "Configuring firewall"
+	warn_ssh_open 4 6 ip6tables
+	warn_ssh_open 6 4 iptables
 	local v name custom
 	install -d /etc/iptables
 	for v in 4 6; do

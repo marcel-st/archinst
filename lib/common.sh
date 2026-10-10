@@ -113,13 +113,26 @@ github_login() {
 }
 
 # git with the GitHub token as a header, so it is never written to .git/config.
+# Passed through the environment, not -c: the process list is world-readable.
 # Without a token git prompts for username + password/token itself.
 git_gh() {
 	if [[ -n ${GITHUB_TOKEN:-} ]]; then
-		git -c "http.https://github.com/.extraheader=Authorization: Basic $(printf 'x-access-token:%s' "$GITHUB_TOKEN" | base64 -w0)" "$@"
+		GIT_CONFIG_COUNT=1 \
+			GIT_CONFIG_KEY_0="http.https://github.com/.extraheader" \
+			GIT_CONFIG_VALUE_0="Authorization: Basic $(printf 'x-access-token:%s' "$GITHUB_TOKEN" | base64 -w0)" \
+			git "$@"
 	else
 		git "$@"
 	fi
+}
+
+# Fetching secrets needs a token or someone at a terminal for the device
+# login; without either it would wait unseen until the code expires.
+can_fetch_secrets() {
+	[[ -n ${GITHUB_TOKEN:-} ]] && return 0
+	interactive && return 0
+	warn "no terminal and no GITHUB_TOKEN: skipping secrets (run 'archinst secrets' to fetch them)"
+	return 1
 }
 
 fetch_secrets() {

@@ -52,6 +52,10 @@ archinst update     # git pull archinst and the secrets repo
 archinst base       # re-apply after config or code changes
 ```
 
+`update` only refreshes the secrets when it runs in a terminal (for the
+device login) or with `GITHUB_TOKEN` set; otherwise it skips them with a
+warning instead of waiting for a login nobody sees.
+
 Regular package updates are plain `pacman -Syu`. AUR packages installed by a
 module (kopia, zfs) are updated by running that module again.
 
@@ -67,7 +71,8 @@ The baseline every host gets. In order:
 3. **pacman**: enables `Color` and `ParallelDownloads`, updates
    `archlinux-keyring` and installs `kernel-modules-hook`, then does a full
    system upgrade. Writes `/etc/xdg/reflector/reflector.conf` (HTTPS mirrors
-   in `MIRROR_COUNTRIES`, sorted by speed), refreshes the mirrorlist and
+   in `MIRROR_COUNTRIES`, the 20 most recently synced, sorted by their
+   mirror status score), refreshes the mirrorlist and
    enables the weekly `reflector.timer`. Then `BASE_PACKAGES`.
    Virtual machines also get `qemu-guest-agent`.
 
@@ -110,8 +115,14 @@ Example for a web server that only allows SSH from home:
 
 ```bash
 SSH_ALLOW_V4=("203.0.113.10")
+SSH_ALLOW_V6=("2001:db8:1::10")
 OPEN_TCP_PORTS=(80 443)
 ```
+
+Set both `SSH_ALLOW_V4` and `SSH_ALLOW_V6`: an empty list means *anywhere*,
+so restricting only IPv4 leaves SSH open to the world over IPv6. `base` warns
+when only one of them is set. To close SSH over IPv6 entirely, put
+`iptables/ip6tables.rules` in the secrets repo.
 
 To use a completely custom ruleset instead, put `iptables/iptables.rules`
 and/or `iptables/ip6tables.rules` in the secrets repo. Rules are always
@@ -137,6 +148,19 @@ example an Azure network security group) and you do not want a host firewall.
 - Adds the admin user to the `docker` group and creates `/opt/docker` for
   compose projects.
 - Enables and (re)starts Docker, so a changed `daemon.json` takes effect.
+
+**Published ports bypass the firewall.** Docker forwards published ports
+(`-p 8080:80`, `ports:` in compose) through its own NAT and FORWARD rules, so
+they never reach the INPUT chain: `OPEN_TCP_PORTS` and `SSH_ALLOW_*` do not
+apply and the port is open to the world. Choose per service:
+
+- Bind to localhost when only a reverse proxy on the host needs it:
+  `-p 127.0.0.1:8080:80` (compose: `"127.0.0.1:8080:80"`).
+- Make localhost the default for every container with `"ip": "127.0.0.1"` in
+  `docker/daemon.json`; publish on `0.0.0.0:` explicitly where needed.
+- Filter in the `DOCKER-USER` chain, which Docker evaluates before its own
+  rules. archinst does not manage that chain yet: reloading the firewall
+  flushes it and Docker recreates it empty.
 
 ## kopia
 

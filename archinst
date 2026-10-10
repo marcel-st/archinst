@@ -65,7 +65,7 @@ case $1 in
 		;;
 	update)
 		git -C "$ARCHINST_DIR" pull --ff-only
-		[[ -d $SECRETS_DIR/.git ]] && fetch_secrets
+		if [[ -d $SECRETS_DIR/.git ]] && can_fetch_secrets; then fetch_secrets; fi
 		;;
 	*)
 		for m in "$@"; do run_module "$m"; done

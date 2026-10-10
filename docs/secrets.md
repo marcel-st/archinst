@@ -6,7 +6,7 @@ repository `marcel-st/secrets`, which archinst clones to
 
 ```bash
 archinst secrets    # clone the first time, git pull afterwards
-archinst update     # also pulls the secrets
+archinst update     # also pulls the secrets (in a terminal or with GITHUB_TOKEN)
 ```
 
 During `archinst install` the secrets are fetched on the live ISO and copied
