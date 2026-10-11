@@ -196,7 +196,11 @@ firewall_apply() {
 }
 
 firewall_confirm() {
-	[[ -f $FW_NEW ]] || die "no firewall change to confirm"
+	# No timer: nothing on trial, or a reboot already discarded the trial rules
+	if [[ ! -f $FW_NEW ]] || ! fw_pending; then
+		rm -f "$FW_NEW"
+		die "no firewall change on trial to confirm; run 'archinst firewall apply'"
+	fi
 	systemctl stop "$FW_ROLLBACK.timer" &>/dev/null || true
 	mv "$FW_NEW" "$FW_FILE"
 	systemctl enable -q "$FW_UNIT"
