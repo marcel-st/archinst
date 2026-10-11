@@ -215,7 +215,20 @@ renumbering.
   firewall without changing its rules.
 - Never blocks localhost or `SSHGUARD_WHITELIST`.
 
-Check blocked addresses with `nft list table ip sshguard`.
+Meant for a host with SSH open to the world (the jump host). Every failed
+login (wrong user, password or key) scores 10 points. At 30 points within
+30 minutes the address is blocked for `SSHGUARD_BLOCK_TIME` (10 minutes);
+each next block lasts 1.5 times longer. At `SSHGUARD_BLACKLIST` points
+(90, about the third block) the address is blocked permanently, also after
+a reboot.
+
+```bash
+nft list table ip sshguard                 # blocked IPv4 addresses (ip6 sshguard for IPv6)
+cat /var/db/sshguard/blacklist.db          # permanently blocked addresses
+```
+
+To lift a permanent block, stop sshguard, delete the address's line from
+`blacklist.db` and start sshguard again.
 
 ## lts-kernel
 
