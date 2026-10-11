@@ -4,6 +4,8 @@
 ARCHINST_DIR=$(dirname "$(readlink -f "${BASH_SOURCE[0]}")")
 # shellcheck source=lib/common.sh
 source "$ARCHINST_DIR/lib/common.sh"
+# shellcheck source=lib/firewall.sh
+source "$ARCHINST_DIR/lib/firewall.sh"
 
 usage() {
 	cat <<-EOF
@@ -20,6 +22,10 @@ usage() {
 	  list                 Show modules and when they were applied
 	  secrets              Clone or update the private secrets repository
 	  update               Update archinst itself (git pull)
+	  firewall [status]    Show the firewall, a change on trial and blocked Docker ports
+	  firewall apply       Regenerate and load the firewall (after changing ports)
+	  firewall confirm     Keep a firewall change on trial (run from a NEW SSH session)
+	  firewall rollback    Restore the previous firewall rules now
 	EOF
 }
 
@@ -66,6 +72,15 @@ case $1 in
 	update)
 		git -C "$ARCHINST_DIR" pull --ff-only
 		if [[ -d $SECRETS_DIR/.git ]] && can_fetch_secrets; then fetch_secrets; fi
+		;;
+	firewall)
+		case ${2:-status} in
+			apply) require_base; firewall_apply ;;
+			confirm) firewall_confirm ;;
+			rollback) firewall_rollback ;;
+			status) firewall_status ;;
+			*) die "usage: archinst firewall [status|apply|confirm|rollback]" ;;
+		esac
 		;;
 	*)
 		for m in "$@"; do run_module "$m"; done

@@ -100,46 +100,71 @@ The baseline every host gets. In order:
 
 ### Firewall
 
-With `FIREWALL="yes"` (default), `base` writes `/etc/iptables/iptables.rules`
-and `/etc/iptables/ip6tables.rules` and enables the `iptables` and `ip6tables`
-services. The rules are generated from the configuration:
+With `FIREWALL="yes"` (default), `base` generates one nftables table,
+`inet archinst`, for IPv4 and IPv6 alike, stores it in
+`/etc/archinst/firewall.nft` and loads it at boot with
+`archinst-firewall.service`. Only this table is ever replaced: Docker's and
+sshguard's tables are left alone, so changing the firewall does not restart
+Docker or its containers.
 
 - incoming traffic is dropped by default, outgoing traffic is allowed
 - loopback, established/related connections and limited ping are allowed
-- IPv6: ICMPv6 (needed for neighbour discovery) and DHCPv6 replies are allowed
-- SSH (port 22) from `SSH_ALLOW_V4` / `SSH_ALLOW_V6`, or from anywhere when empty
-- `OPEN_TCP_PORTS` and `OPEN_UDP_PORTS`
+- ICMPv6 (needed for neighbour discovery) and DHCPv6 replies are allowed
+- SSH (port 22) from `SSH_ALLOW`, or from anywhere when it is empty
+- `OPEN_TCP_PORTS` and `OPEN_UDP_PORTS`, for host services **and** ports
+  published by Docker (see [docker](#docker))
+- rules from `/etc/archinst/nftables.d/*.nft`
 - everything else is rejected
 
-Example for a web server that only allows SSH from home:
+`SSH_ALLOW` takes IPv4 and IPv6 addresses and networks in one list. A protocol
+without entries gets no SSH at all, so listing only IPv4 sources closes SSH
+over IPv6. Example for a web server reached through a jump host:
 
 ```bash
-SSH_ALLOW_V4=("203.0.113.10")
-SSH_ALLOW_V6=("2001:db8:1::10")
+SSH_ALLOW=("203.0.113.10" "2001:db8:1::10")
 OPEN_TCP_PORTS=(80 443)
 ```
 
-Set both `SSH_ALLOW_V4` and `SSH_ALLOW_V6`: an empty list means *anywhere*,
-so restricting only IPv4 leaves SSH open to the world over IPv6. `base` warns
-when only one of them is set. To close SSH over IPv6 entirely, put
-`iptables/ip6tables.rules` in the secrets repo.
+The old `SSH_ALLOW_V4`/`SSH_ALLOW_V6` still work (merged into `SSH_ALLOW`,
+with a warning).
 
-To use a completely custom ruleset instead, put `iptables/iptables.rules`
-and/or `iptables/ip6tables.rules` in the secrets repo. Rules are always
-checked with `iptables-restore --test` before they are installed.
+**Host-specific rules** go in `/etc/archinst/nftables.d/*.nft` on that host.
+They are added to the generated ruleset and checked with it. Add rules to the
+`custom_input` chain (host services) or `custom_forward` (Docker published
+ports), for example a metrics port only for the LAN:
 
-**Lockout protection:** when `base` runs in a terminal, the IPv4 rules are
-applied with `iptables-apply`. Over SSH, open a *second* SSH session to check
-you can still get in, then answer `y`; on a console just answer `y`. Without
-an answer within 30 seconds the old rules are restored and archinst stops.
-Without a terminal (`ASSUME_YES`, automation) the rules are applied directly.
+```
+add rule inet archinst custom_input tcp dport 9100 ip saddr 10.100.0.0/16 accept
+```
 
-Restarting the firewall flushes Docker's iptables chains, so Docker is
-restarted afterwards when it is running. If you reload the firewall by hand,
-run `systemctl restart docker` too.
+Run `archinst firewall apply` after changing ports or snippets; a full `base`
+is not needed. Rules are checked with `nft -c` before they are loaded, and
+nothing is reloaded when the generated ruleset did not change.
 
-Set `FIREWALL="no"` on hosts where the provider already filters traffic (for
-example an Azure network security group) and you do not want a host firewall.
+**Lockout protection.** Every change is loaded *on trial*: unless it is
+confirmed within `FIREWALL_CONFIRM_TIMEOUT` seconds (120), a timer restores
+the previous rules. Until it is confirmed, a reboot also boots with the
+previous rules.
+
+- In a terminal, archinst asks. Over SSH, first open a **new** SSH session to
+  the host to prove you can still get in, then answer `y`.
+- Without a terminal (Ansible, `ssh host sudo archinst base </dev/null`)
+  archinst prints a warning and continues. Confirm from a **new** SSH
+  connection: `ssh host sudo archinst firewall confirm`. For Ansible, run that
+  step with a fresh connection (not a reused ControlPersist socket).
+- `archinst firewall` shows the loaded table, a change on trial and Docker
+  ports that are blocked; `archinst firewall rollback` restores the previous
+  rules right away.
+
+**Hosts on the old iptables firewall** switch over on the next `base` (or
+`archinst firewall apply`): on trial only the old INPUT rules are cleared,
+Docker's iptables chains stay untouched. Confirming disables the `iptables`
+and `ip6tables` services and renames their rules files to
+`*.rules.archinst-old`; a rollback restores the old INPUT rules.
+
+Set `FIREWALL="no"` on hosts where something else filters traffic (an Azure
+network security group, a hardware firewall) and you do not want a host
+firewall. The `inet archinst` table is then removed.
 
 ## docker
 
@@ -149,18 +174,20 @@ example an Azure network security group) and you do not want a host firewall.
   compose projects.
 - Enables and (re)starts Docker, so a changed `daemon.json` takes effect.
 
-**Published ports bypass the firewall.** Docker forwards published ports
-(`-p 8080:80`, `ports:` in compose) through its own NAT and FORWARD rules, so
-they never reach the INPUT chain: `OPEN_TCP_PORTS` and `SSH_ALLOW_*` do not
-apply and the port is open to the world. Choose per service:
+**Published ports follow `OPEN_TCP_PORTS`.** Docker forwards published ports
+(`-p 8080:80`, `ports:` in compose) with its own NAT rules, past the input
+chain. The archinst firewall filters them in its forward chain instead: a
+published port is reachable from outside only when the *published* port
+(8080 here) is in `OPEN_TCP_PORTS`/`OPEN_UDP_PORTS`. Traffic between
+containers, from containers to the internet and from the host itself is not
+affected.
 
-- Bind to localhost when only a reverse proxy on the host needs it:
-  `-p 127.0.0.1:8080:80` (compose: `"127.0.0.1:8080:80"`).
-- Make localhost the default for every container with `"ip": "127.0.0.1"` in
-  `docker/daemon.json`; publish on `0.0.0.0:` explicitly where needed.
-- Filter in the `DOCKER-USER` chain, which Docker evaluates before its own
-  rules. archinst does not manage that chain yet: reloading the firewall
-  flushes it and Docker recreates it empty.
+So on a reverse-proxy host set `OPEN_TCP_PORTS=(80 443)` in
+`/etc/archinst/archinst.conf`. An admin UI that is published only now and
+then (81, 8000) stays closed; reach it through a proxy rule or an SSH tunnel
+via the jump host (`ssh -L 8081:localhost:81 host`).
+`archinst firewall` (and every apply) warns about published ports that are
+blocked.
 
 ## kopia
 

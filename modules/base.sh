@@ -19,7 +19,7 @@ set_root_password() {
 }
 
 # A kernel upgraded without reboot leaves the running kernel without modules,
-# so iptables (nf_tables) and other modules cannot load until a reboot
+# so nftables and other modules cannot load until a reboot
 check_kernel() {
 	systemd_live || return 0
 	[[ -d /usr/lib/modules/$(uname -r) ]] && return 0
@@ -100,85 +100,6 @@ setup_sshd() {
 	return 0
 }
 
-# Writes rules for iptables-restore; $1 = 4 or 6
-generate_rules() {
-	local v=$1 port src
-	local -n allow=SSH_ALLOW_V$v
-	echo "*filter"
-	echo ":INPUT DROP [0:0]"
-	echo ":FORWARD DROP [0:0]"
-	echo ":OUTPUT ACCEPT [0:0]"
-	echo "-A INPUT -i lo -j ACCEPT"
-	echo "-A INPUT -m conntrack --ctstate RELATED,ESTABLISHED -j ACCEPT"
-	echo "-A INPUT -m conntrack --ctstate INVALID -j DROP"
-	if [[ $v == 4 ]]; then
-		echo "-A INPUT -p icmp --icmp-type echo-request -m limit --limit 5/second -j ACCEPT"
-	else
-		# Neighbour discovery and router adverts are required for IPv6 to work
-		echo "-A INPUT -p ipv6-icmp -j ACCEPT"
-		echo "-A INPUT -s fe80::/10 -p udp --dport 546 -j ACCEPT"
-	fi
-	if ((${#allow[@]})); then
-		for src in "${allow[@]}"; do
-			echo "-A INPUT -p tcp --dport 22 -s $src -m conntrack --ctstate NEW -j ACCEPT"
-		done
-	else
-		echo "-A INPUT -p tcp --dport 22 -m conntrack --ctstate NEW -j ACCEPT"
-	fi
-	for port in "${OPEN_TCP_PORTS[@]}"; do
-		echo "-A INPUT -p tcp --dport $port -m conntrack --ctstate NEW -j ACCEPT"
-	done
-	for port in "${OPEN_UDP_PORTS[@]}"; do
-		echo "-A INPUT -p udp --dport $port -j ACCEPT"
-	done
-	echo "-A INPUT -p tcp -j REJECT --reject-with tcp-reset"
-	echo "-A INPUT -p udp -j REJECT"
-	echo "COMMIT"
-}
-
-# SSH restricted for one protocol only is still open to everyone over the other;
-# $1/$2 = restricted/unrestricted IP version, $3 = custom rules file for $2
-warn_ssh_open() {
-	local -n restricted=SSH_ALLOW_V$1 open=SSH_ALLOW_V$2
-	((${#restricted[@]} && ! ${#open[@]})) || return 0
-	secret "iptables/$3.rules" >/dev/null && return 0
-	warn "SSH_ALLOW_V$1 is set but SSH_ALLOW_V$2 is empty: SSH is open to everyone over IPv$2"
-}
-
-setup_firewall() {
-	[[ $FIREWALL == yes ]] || { log "Firewall disabled (FIREWALL=$FIREWALL)"; return 0; }
-	log "Configuring firewall"
-	warn_ssh_open 4 6 ip6tables
-	warn_ssh_open 6 4 iptables
-	local v name custom
-	install -d /etc/iptables
-	for v in 4 6; do
-		name=iptables; [[ $v == 6 ]] && name=ip6tables
-		if custom=$(secret "iptables/$name.rules"); then
-			log "Using $name rules from secrets"
-			cp "$custom" "/etc/iptables/$name.rules"
-		else
-			generate_rules "$v" >"/etc/iptables/$name.rules"
-		fi
-		"$name-restore" --test "/etc/iptables/$name.rules" || die "$name.rules is invalid"
-	done
-
-	systemctl enable iptables ip6tables
-	systemd_live || return 0
-	# Not only when SSH_CONNECTION is set: sudo drops it, so 'sudo archinst base'
-	# over SSH would skip the rollback
-	if interactive; then
-		# Rolls back automatically unless you confirm SSH still works
-		iptables-apply -t 30 /etc/iptables/iptables.rules || die "firewall rolled back; fix rules and re-run"
-		systemctl start iptables ip6tables
-	else
-		systemctl restart iptables ip6tables
-	fi
-	# Reloading iptables flushes Docker's chains; let Docker recreate them
-	if systemctl is-active -q docker; then systemctl restart docker; fi
-	return 0
-}
-
 setup_misc() {
 	log "System tweaks"
 	install -d /etc/makepkg.conf.d
@@ -202,5 +123,5 @@ set_root_password
 setup_pacman
 setup_admin
 setup_sshd
-setup_firewall
+firewall_apply
 setup_misc

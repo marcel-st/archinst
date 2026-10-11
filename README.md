@@ -52,6 +52,7 @@ archinst base           baseline for every host, required before other modules
 archinst <module>...    apply modules in the given order
 archinst list           modules and when they were last applied on this host
 archinst secrets        clone or update the secrets repo in /etc/archinst/secrets
+archinst firewall       show the firewall; apply, confirm or rollback a change
 archinst update         git pull archinst (and the secrets repo)
 ```
 

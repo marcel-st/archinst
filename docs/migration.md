@@ -65,8 +65,8 @@ Starting from the old `secrets` repository:
 | `arch/config.json` | | delete, archinstall is no longer used |
 | `docker/setup.env` | `docker/daemon.json` | rename (old name still works) |
 | `kopia/setup.env` | `kopia/setup.env` | keep; add `KOPIA_PASSWORD`, check `BACKUP_ANNUAL` |
-| `iptables/iptables.rules` | `archinst.conf` | **replace** with `SSH_ALLOW_V4=(...)`, see below |
-| `iptables/ip6tables.rules` | `archinst.conf` | **replace** with `SSH_ALLOW_V6=(...)` |
+| `iptables/iptables.rules` | `archinst.conf` | **replace** with `SSH_ALLOW=(...)`, see below |
+| `iptables/ip6tables.rules` | `archinst.conf` | **replace**, IPv6 sources go in the same `SSH_ALLOW` |
 | `iptables/iptables.default` | | delete |
 | `readme.md` | `readme.md` | keep |
 
@@ -75,8 +75,7 @@ them and let archinst generate the rules. Put the SSH source address from the
 old file into `archinst.conf` in the secrets repo:
 
 ```bash
-SSH_ALLOW_V4=("<address from the old iptables.rules>")
-SSH_ALLOW_V6=("<address from the old ip6tables.rules>")
+SSH_ALLOW=("<address from the old iptables.rules>" "<address from the old ip6tables.rules>")
 ```
 
 Be careful with IPv6: the old rule allowed a single home address, and home
@@ -103,6 +102,13 @@ rm -f /usr/local/bin/deploy /usr/local/bin/deploy.bck   # old deploy script
 rm -f /etc/sudoers.d/admins                             # replaced by 10-archinst
 rm -f /etc/profile.d/mymotd.sh                          # old neofetch motd
 ```
+
+`base` replaces the old iptables firewall with the archinst nftables table
+and loads it on trial: confirm it from a new SSH session (see
+[deploy.md](deploy.md#firewall)). On a host with Docker, put the ports its
+containers publish to the outside in `OPEN_TCP_PORTS` in
+`/etc/archinst/archinst.conf` **before** running `base`, or they are blocked;
+`archinst firewall` lists the published ports that would be.
 
 If the host had Docker or Kopia, re-run `archinst docker` / `archinst kopia`.
 For Kopia, an existing repository at `$BACKUP_STORAGE/<hostname>` is connected

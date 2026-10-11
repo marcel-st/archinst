@@ -86,9 +86,6 @@ secrets/
 ├── archinst.conf              config overrides for all hosts
 ├── users/
 │   └── *.pub                  SSH public keys for the admin user
-├── iptables/
-│   ├── iptables.rules         complete custom IPv4 ruleset (optional)
-│   └── ip6tables.rules        complete custom IPv6 ruleset (optional)
 ├── docker/
 │   └── daemon.json            /etc/docker/daemon.json
 └── kopia/
@@ -102,8 +99,7 @@ defaults and before the host's `/etc/archinst/archinst.conf`. Good place for
 settings you want on every host but not in public, such as:
 
 ```bash
-SSH_ALLOW_V4=("203.0.113.10")
-SSH_ALLOW_V6=("2001:db8:1234::/48")
+SSH_ALLOW=("203.0.113.10" "2001:db8:1234::/48")
 ```
 
 ### users/*.pub
@@ -112,14 +108,6 @@ One OpenSSH public key per file (for example `ansible.pub`, `laptop.pub`).
 All of them, plus `ADMIN_SSH_KEYS`, become the admin user's
 `authorized_keys`. Removing a file and re-running `archinst base` removes
 that key from the host.
-
-### iptables/*.rules
-
-Only needed when the generated firewall is not enough. The file is used as-is
-with `iptables-restore` / `ip6tables-restore` and must be a complete ruleset
-(`*filter` ... `COMMIT`). It replaces the generated rules for that protocol;
-`SSH_ALLOW_*` and `OPEN_*_PORTS` no longer apply to it. Always keep a rule
-accepting SSH from somewhere you can reach.
 
 ### docker/daemon.json
 

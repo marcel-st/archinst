@@ -1,0 +1,13 @@
+[Unit]
+Description=archinst firewall (nftables table inet archinst)
+Documentation=https://github.com/marcel-st/archinst/blob/main/docs/deploy.md
+Wants=network-pre.target
+Before=network-pre.target
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=/usr/bin/nft -f /etc/archinst/firewall.nft
+
+[Install]
+WantedBy=multi-user.target
