@@ -215,12 +215,16 @@ renumbering.
   firewall without changing its rules.
 - Never blocks localhost or `SSHGUARD_WHITELIST`.
 
-Meant for a host with SSH open to the world (the jump host). Every failed
-login (wrong user, password or key) scores 10 points. At 30 points within
-30 minutes the address is blocked for `SSHGUARD_BLOCK_TIME` (10 minutes);
-each next block lasts 1.5 times longer. At `SSHGUARD_BLACKLIST` points
-(90, about the third block) the address is blocked permanently, also after
-a reboot.
+Meant for a host with SSH open to the world (the jump host). Failed logins
+score points: 10 for a wrong password or keyboard-interactive answer, 2 for
+an attempt with an unknown user or key only. At 30 points within 30 minutes
+the address is blocked for `SSHGUARD_BLOCK_TIME` (10 minutes), so after 3
+wrong passwords or about 15 key-only attempts; every next block of the same
+address lasts twice as long. At `SSHGUARD_BLACKLIST` points (90) the third
+block is permanent, also after a reboot. IPv6 addresses are blocked per /64.
+
+OpenSSH (9.8+) also refuses sources with many failed logins for a short while
+on its own (`PerSourcePenalties`); those attempts never reach sshguard.
 
 ```bash
 nft list table ip sshguard                 # blocked IPv4 addresses (ip6 sshguard for IPv6)

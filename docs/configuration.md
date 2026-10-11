@@ -85,8 +85,8 @@ These are ignored for a protocol when the secrets repo contains
 | `DOCKER_PACKAGES` | `(docker docker-compose docker-buildx ducker)` | docker | packages to install |
 | `BACKUP_PATHS` | `(/etc /opt /root)` | kopia | directories to snapshot |
 | `BACKUP_SCHEDULE` | `daily` | kopia | systemd `OnCalendar` value, e.g. `*-*-* 02:00` |
-| `SSHGUARD_BLOCK_TIME` | `600` | sshguard | seconds an address is blocked the first time; each next block lasts 1.5× longer |
-| `SSHGUARD_BLACKLIST` | `90` | sshguard | attack score for a permanent block (10 per failed login, about the 3rd block) |
+| `SSHGUARD_BLOCK_TIME` | `600` | sshguard | seconds an address is blocked the first time; each next block lasts twice as long |
+| `SSHGUARD_BLACKLIST` | `90` | sshguard | attack score for a permanent block; 90 = the 3rd block (a block happens at 30) |
 | `SSHGUARD_WHITELIST` | `()` | sshguard | addresses/networks never blocked, besides localhost |
 
 Backup credentials and retention are not configured here but in
